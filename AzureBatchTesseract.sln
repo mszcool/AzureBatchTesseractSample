@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatchTesseractClient", "BatchTesseractClient\BatchTesseractClient.csproj", "{C29F355A-FFCA-4D59-81E5-4E5FFDFFC46C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatchTesseractWrapper", "BatchTesseractWrapper\BatchTesseractWrapper.csproj", "{508B5303-EF37-49CC-9DE0-E0C1AC4BA749}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{48DA9E52-C512-4123-855C-485CD20321CC}"
+	ProjectSection(SolutionItems) = preProject
+		DeploySolution.ps1 = DeploySolution.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SupportFiles", "SupportFiles", "{B8ACB6FC-25A6-4174-9B2A-C4F27F4103CD}"
+	ProjectSection(SolutionItems) = preProject
+		SupportFiles\Tesseract-Demo - Copy (1).png = SupportFiles\Tesseract-Demo - Copy (1).png
+		SupportFiles\Tesseract-Demo - Copy (10).png = SupportFiles\Tesseract-Demo - Copy (10).png
+		SupportFiles\Tesseract-Demo - Copy (2).png = SupportFiles\Tesseract-Demo - Copy (2).png
+		SupportFiles\Tesseract-Demo - Copy (3).png = SupportFiles\Tesseract-Demo - Copy (3).png
+		SupportFiles\Tesseract-Demo - Copy (4).png = SupportFiles\Tesseract-Demo - Copy (4).png
+		SupportFiles\Tesseract-Demo - Copy (5).png = SupportFiles\Tesseract-Demo - Copy (5).png
+		SupportFiles\Tesseract-Demo - Copy (6).png = SupportFiles\Tesseract-Demo - Copy (6).png
+		SupportFiles\Tesseract-Demo - Copy (7).png = SupportFiles\Tesseract-Demo - Copy (7).png
+		SupportFiles\Tesseract-Demo - Copy (8).png = SupportFiles\Tesseract-Demo - Copy (8).png
+		SupportFiles\Tesseract-Demo - Copy (9).png = SupportFiles\Tesseract-Demo - Copy (9).png
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{FE1C5C50-4619-43E8-944A-694AFB0851E1}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C29F355A-FFCA-4D59-81E5-4E5FFDFFC46C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C29F355A-FFCA-4D59-81E5-4E5FFDFFC46C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C29F355A-FFCA-4D59-81E5-4E5FFDFFC46C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C29F355A-FFCA-4D59-81E5-4E5FFDFFC46C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{508B5303-EF37-49CC-9DE0-E0C1AC4BA749}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{508B5303-EF37-49CC-9DE0-E0C1AC4BA749}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{508B5303-EF37-49CC-9DE0-E0C1AC4BA749}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{508B5303-EF37-49CC-9DE0-E0C1AC4BA749}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B8ACB6FC-25A6-4174-9B2A-C4F27F4103CD} = {48DA9E52-C512-4123-855C-485CD20321CC}
+	EndGlobalSection
+EndGlobal
