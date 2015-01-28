@@ -147,10 +147,7 @@ $resGroup = Get-AzureResourceGroup -Name $batchSampleResourceGroupName
 if($resGroup -eq $null) 
 {
     Write-Host "- Resource group does not exist, yet... creating..."
-    New-AzureResourceGroup -Name $batchSampleResourceGroupName -Location $regionName
-    if($resGroup -eq $null) {
-        throw "Unable to create and/or find the Azure Resource group '" + $batchSampleResourceGroupName + "'!!"
-    }
+    New-AzureResourceGroup -Name $batchSampleResourceGroupName -Location $regionName -ErrorAction Stop
 }
 else 
 {
