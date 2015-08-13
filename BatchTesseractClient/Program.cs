@@ -34,24 +34,26 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace BatchTesseractClient
 {
-    internal class Program
+    class Program
     {
-        private const string PoolName = "batchtesseractsamplepool";
+        const string PoolName = "batchtesseractsamplepool";
 
-        private static void Main(string[] args)
+        static void Main(string[] args)
         {
             Console.WriteLine("What to do?\r\n(c)reatepool\r\n(s)cheduletasks\r\n(d)elete pool");
             var actionToDo = Console.ReadLine();
 
             #region Reading configuration Data
 
+            var accountRegion = ConfigurationManager.AppSettings["BatchRegion"];
             var accountName = ConfigurationManager.AppSettings["BatchAccountName"];
             var accountKey = ConfigurationManager.AppSettings["BatchAccountKey"];
+            var accountBaseUrl = string.Format("https://{0}.{1}.batch.azure.com", accountName, accountRegion);
 
             var storageAccountName = ConfigurationManager.AppSettings["BatchDemoStorageAccount"];
             var storageAccountKey = ConfigurationManager.AppSettings["BatchDemoStorageAccountKey"];
             var storageAccount = CloudStorageAccount.Parse(string.Format(
-                                    "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", 
+                                    "DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}",
                                     storageAccountName,
                                     storageAccountKey));
 
@@ -67,11 +69,8 @@ namespace BatchTesseractClient
             #endregion
 
             Console.WriteLine("Creating batch client to access Azure Batch Service...");
-            var credentials = new BatchCredentials(accountName, accountKey);
-            var batchClient = BatchClient.Connect(
-                "https://batch.core.windows.net",
-                credentials
-                );
+            var credentials = new BatchSharedKeyCredentials(accountBaseUrl, accountName, accountKey);
+            var batchClient = BatchClient.Open(credentials);
             Console.WriteLine("Batch client created successfully!");
 
             #region Setup Compute Pool or delete compute pool
@@ -82,7 +81,7 @@ namespace BatchTesseractClient
 
                 Console.WriteLine();
 
-                var binaryResourceFiles = new List<IResourceFile>();
+                var binaryResourceFiles = new List<ResourceFile>();
                 Console.WriteLine("Get list of 'resource files' required for execution from BLOB storage...");
                 foreach (var resFile in blobTesseractContainer.ListBlobs(useFlatBlobListing: true))
                 {
@@ -106,37 +105,46 @@ namespace BatchTesseractClient
 
                 Console.WriteLine();
                 Console.WriteLine("Creating pool if needed...");
-                using (var pm = batchClient.OpenPoolManager())
+                var poolExists = false;
+                try
                 {
-                    var pools = pm.ListPools().ToList();
-                    var poolExists = (pools.Select(p => p.Name).Contains(PoolName));
-                    if ((actionToDo == "c") && !poolExists)
+                    var existingPool = batchClient.PoolOperations.GetPool(PoolName);
+                    poolExists = true;
+                }
+                catch (Exception)
+                {
+                    poolExists = false;
+                }
+                if ((actionToDo == "c") && !poolExists)
+                {
+                    Console.WriteLine("Creating the pool...");
+                    var newPool = batchClient.PoolOperations.CreatePool
+                        (
+                            PoolName,
+                            "3",
+                            "small",
+                            5
+                        );
+                    newPool.StartTask = new StartTask
                     {
-                        Console.WriteLine("Creating the pool...");
-                        var newPool = pm.CreatePool
-                            (PoolName, "3", "small", 5
-                            );
-                        newPool.StartTask = new StartTask
-                        {
-                            ResourceFiles = binaryResourceFiles,
-                            CommandLine = "cmd /c CopyFiles.cmd",
-                            WaitForSuccess = true
-                        };
-                        newPool.CommitAsync().Wait();
-                        Console.WriteLine("Pool {0} created!", PoolName);
-                    }
-                    else if ((actionToDo == "d") && poolExists)
-                    {
-                        Console.WriteLine("Deleting the pool...");
-                        pm.DeletePoolAsync(PoolName).Wait();
-                        Console.WriteLine("Pool {0} deleted!", PoolName);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Action {0} not executed since pool does {1}!",
-                            actionToDo == "c" ? "'Create Pool'" : "'Delete Pool'",
-                            poolExists ? "exist, already" : "not exist, anyway");
-                    }
+                        ResourceFiles = binaryResourceFiles,
+                        CommandLine = "cmd /c CopyFiles.cmd",
+                        WaitForSuccess = true
+                    };
+                    newPool.CommitAsync().Wait();
+                    Console.WriteLine("Pool {0} created!", PoolName);
+                }
+                else if ((actionToDo == "d") && poolExists)
+                {
+                    Console.WriteLine("Deleting the pool...");
+                    batchClient.PoolOperations.DeletePoolAsync(PoolName).Wait();
+                    Console.WriteLine("Pool {0} deleted!", PoolName);
+                }
+                else
+                {
+                    Console.WriteLine("Action {0} not executed since pool does {1}!",
+                        actionToDo == "c" ? "'Create Pool'" : "'Delete Pool'",
+                        (poolExists) ? "exist, already" : "not exist, anyway");
                 }
             }
 
@@ -149,7 +157,7 @@ namespace BatchTesseractClient
                 #region Get the Task Files
 
                 Console.WriteLine();
-                var filesToProcess = new List<IResourceFile>();
+                var filesToProcess = new List<ResourceFile>();
                 Console.WriteLine("Get list of 'files' to be processed in tasks...");
                 foreach (var fileToProc in blobOcrSourceContainer.ListBlobs(useFlatBlobListing: true))
                 {
@@ -171,56 +179,46 @@ namespace BatchTesseractClient
 
                 Console.WriteLine();
                 Console.WriteLine("Creating a job with its tasks...");
-                using (var wiMgr = batchClient.OpenWorkItemManager())
+                var jobName = string.Format("ocr-{0}", DateTime.UtcNow.Ticks);
+                Console.WriteLine("- Creating a new job {0}...", jobName);
+                var ocrJob = batchClient.JobOperations.CreateJob();
+                ocrJob.Id = jobName;
+                ocrJob.PoolInformation = new PoolInformation { PoolId = PoolName };
+                ocrJob.Commit();
+
+                Console.WriteLine("- Adding tasks to the job of the work item.");
+                var taskNr = 0;
+                var job = batchClient.JobOperations.GetJob(jobName);
+                foreach (var ocrFile in filesToProcess)
                 {
-                    var workItemName = string.Format("ocr-{0}", DateTime.UtcNow.Ticks);
-                    Console.WriteLine("- Creating a work item {0}...", workItemName);
-                    var ocrWorkItem = wiMgr.CreateWorkItem(workItemName);
-                    ocrWorkItem.JobExecutionEnvironment =
-                        new JobExecutionEnvironment
-                        {
-                            PoolName = PoolName
-                        };
-                    ocrWorkItem.CommitAsync().Wait();
+                    var taskName = string.Format("task_no_{0}", taskNr++);
 
-                    Console.WriteLine("- Adding tasks to the job of the work item.");
-                    var taskNr = 0;
-                    const string defaultJobName = "job-0000000001";
-                    var job = wiMgr.GetJob(workItemName, defaultJobName);
+                    Console.WriteLine("  - {0} for file {1}", taskName, ocrFile.FilePath);
 
-                    foreach (var ocrFile in filesToProcess)
-                    {
-                        var taskName = string.Format("task_no_{0}", taskNr++);
+                    var taskCmd =
+                        string.Format(
+                            "cmd /c %WATASK_TVM_ROOT_DIR%\\shared\\BatchTesseractWrapper.exe \"{0}\" \"{1}\"",
+                            ocrFile.BlobSource,
+                            Path.GetFileNameWithoutExtension(ocrFile.FilePath));
 
-                        Console.WriteLine("  - {0} for file {1}", taskName, ocrFile.FilePath);
+                    var cloudTask = new CloudTask(taskName, taskCmd);
 
-                        var taskCmd =
-                            string.Format(
-                                "cmd /c %WATASK_TVM_ROOT_DIR%\\shared\\BatchTesseractWrapper.exe \"{0}\" \"{1}\"",
-                                ocrFile.BlobSource,
-                                Path.GetFileNameWithoutExtension(ocrFile.FilePath));
+                    job.AddTask(cloudTask);
+                }
+                Console.WriteLine("- All tasks created, committing job!");
+                job.Commit();
 
-                        ICloudTask cloudTask = new CloudTask(taskName, taskCmd);
+                Console.WriteLine();
+                Console.WriteLine("Waiting for job to be completed...");
+                var stateMonitor = batchClient.Utilities.CreateTaskStateMonitor();
+                stateMonitor.WaitAll(job.ListTasks(), TaskState.Completed, new TimeSpan(0, 30, 0));
+                Console.WriteLine("All tasks completed!");
 
-                        job.AddTask(cloudTask);
-                    }
-                    Console.WriteLine("- All tasks created, committing job!");
-                    job.Commit();
-
-                    Console.WriteLine();
-                    Console.WriteLine("Waiting for job to be completed...");
-                    var toolBox = batchClient.OpenToolbox();
-                    var stateMonitor = toolBox.CreateTaskStateMonitor();
-                    var runningTasks = wiMgr.ListTasks(workItemName, defaultJobName);
-                    stateMonitor.WaitAll(runningTasks, TaskState.Completed, TimeSpan.FromMinutes(10));
-                    Console.WriteLine("All tasks completed!");
-
-                    var tasksFinalResult = wiMgr.ListTasks(workItemName, defaultJobName);
-                    foreach (var t in tasksFinalResult)
-                    {
-                        Console.WriteLine("- Task {0}: {1}, exit code {2}", t.Name, t.State,
-                            t.ExecutionInformation.ExitCode);
-                    }
+                var tasksFinalResult = job.ListTasks();
+                foreach (var t in tasksFinalResult)
+                {
+                    Console.WriteLine("- Task {0}: {1}, exit code {2}", t.Id, t.State,
+                        t.ExecutionInformation.ExitCode);
                 }
             }
 
@@ -231,10 +229,10 @@ namespace BatchTesseractClient
             #endregion
         }
 
-        private static string CreateSharedAccessSignature(CloudBlobContainer blobTesseractContainer,
+        static string CreateSharedAccessSignature(CloudBlobContainer blobTesseractContainer,
             IListBlobItem resFile)
         {
-            var resBlob = blobTesseractContainer.GetBlobReferenceFromServer(resFile.Uri.ToString());
+            var resBlob = blobTesseractContainer.GetBlockBlobReference(resFile.Uri.ToString());
             var sharedAccessPolicy = new SharedAccessBlobPolicy
             {
                 Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List,
