@@ -31,6 +31,7 @@ using Microsoft.Azure.Batch.Common;
 using Microsoft.Azure.Batch.FileStaging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System.Web;
 
 namespace BatchTesseractClient
 {
@@ -77,32 +78,6 @@ namespace BatchTesseractClient
 
             if (actionToDo == "c" || actionToDo == "d")
             {
-                #region Get Resource Files and files to process from BLOB storage
-
-                Console.WriteLine();
-
-                var binaryResourceFiles = new List<ResourceFile>();
-                Console.WriteLine("Get list of 'resource files' required for execution from BLOB storage...");
-                foreach (var resFile in blobTesseractContainer.ListBlobs(useFlatBlobListing: true))
-                {
-                    var sharedAccessSig = CreateSharedAccessSignature(blobTesseractContainer, resFile);
-                    var fullUriString = resFile.Uri.ToString();
-                    var relativeUriString = fullUriString.Replace(blobTesseractContainer.Uri + "/", "");
-
-                    Console.WriteLine("- {0} ", relativeUriString);
-
-                    binaryResourceFiles.Add(
-                        new ResourceFile
-                            (
-                            fullUriString + sharedAccessSig,
-                            relativeUriString.Replace("/", @"\")
-                            )
-                        );
-                }
-                Console.WriteLine();
-
-                #endregion
-
                 Console.WriteLine();
                 Console.WriteLine("Creating pool if needed...");
                 var poolExists = false;
@@ -117,6 +92,32 @@ namespace BatchTesseractClient
                 }
                 if ((actionToDo == "c") && !poolExists)
                 {
+                    #region Get Resource Files and files to process from BLOB storage
+
+                    Console.WriteLine();
+
+                    var binaryResourceFiles = new List<ResourceFile>();
+                    Console.WriteLine("Get list of 'resource files' required for execution from BLOB storage...");
+                    foreach (var resFile in blobTesseractContainer.ListBlobs(useFlatBlobListing: true))
+                    {
+                        var sharedAccessSig = CreateSharedAccessSignature(blobTesseractContainer, resFile);
+                        var fullUriString = resFile.Uri.ToString();
+                        var relativeUriString = fullUriString.Replace(blobTesseractContainer.Uri + "/", "");
+
+                        Console.WriteLine("- {0} ", relativeUriString);
+
+                        binaryResourceFiles.Add(
+                            new ResourceFile
+                                (
+                                fullUriString + sharedAccessSig,
+                                relativeUriString.Replace("/", @"\")
+                                )
+                            );
+                    }
+                    Console.WriteLine();
+
+                    #endregion
+
                     Console.WriteLine("Creating the pool...");
                     var newPool = batchClient.PoolOperations.CreatePool
                         (
@@ -210,6 +211,7 @@ namespace BatchTesseractClient
 
                 Console.WriteLine();
                 Console.WriteLine("Waiting for job to be completed...");
+                job.Refresh();
                 var stateMonitor = batchClient.Utilities.CreateTaskStateMonitor();
                 stateMonitor.WaitAll(job.ListTasks(), TaskState.Completed, new TimeSpan(0, 30, 0));
                 Console.WriteLine("All tasks completed!");
@@ -232,11 +234,12 @@ namespace BatchTesseractClient
         static string CreateSharedAccessSignature(CloudBlobContainer blobTesseractContainer,
             IListBlobItem resFile)
         {
-            var resBlob = blobTesseractContainer.GetBlockBlobReference(resFile.Uri.ToString());
+            var blobName = ((Microsoft.WindowsAzure.Storage.Blob.CloudBlockBlob)resFile).Name;
+            var resBlob = blobTesseractContainer.GetBlockBlobReference(blobName);
             var sharedAccessPolicy = new SharedAccessBlobPolicy
             {
                 Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List,
-                SharedAccessStartTime = DateTime.UtcNow,
+                SharedAccessStartTime = DateTime.UtcNow.Subtract(TimeSpan.FromDays(1)),
                 SharedAccessExpiryTime = DateTime.UtcNow.AddYears(1)
             };
             var sharedAccessSig = resBlob.GetSharedAccessSignature(sharedAccessPolicy);

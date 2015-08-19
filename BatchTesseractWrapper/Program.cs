@@ -40,7 +40,9 @@ namespace BatchTesseractWrapper
             {
                 #region Reading Configuration Data and determining Tesseract Base Path
 
-                var tesseractPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"tesseract\tesseract.exe");
+                var tesseractPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, 
+                    @"tesseract\tesseract.exe");
 
                 var storageAccountName = ConfigurationManager.AppSettings["BatchDemoStorageAccount"];
                 var storageAccountKey = ConfigurationManager.AppSettings["BatchDemoStorageAccountKey"];

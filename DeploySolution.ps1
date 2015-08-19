@@ -90,7 +90,11 @@ function UploadDirectory($baseName, $directoryName, $storageContext, $containerN
     {
         $fullFileName = $file.FullName
         $resultingBlobName = [System.String]::Concat($baseName, $file.Name)
-                Set-AzureStorageBlobContent -File "$fullFileName" `                                    -Container $containerName `                                    -Blob "$resultingBlobName" `                                    -Context $storageContext `
+        
+        Set-AzureStorageBlobContent -File "$fullFileName" `
+                                    -Container $containerName `
+                                    -Blob "$resultingBlobName" `
+                                    -Context $storageContext `
                                     -BlobType Block `
                                     -Force
     }
@@ -100,7 +104,9 @@ function UploadDirectory($baseName, $directoryName, $storageContext, $containerN
     {
         $dirFullName = $dir.FullName
         $newBaseName = [System.String]::Concat($baseName, $dir.Name, "/")
-        UploadDirectory -baseName $newBaseName `                        -directoryName "$dirFullName" `                        -storageContext $storageContext `
+        UploadDirectory -baseName $newBaseName `
+                        -directoryName "$dirFullName" `
+                        -storageContext $storageContext `
                         -containerName $containerName
     }
 }
@@ -116,7 +122,9 @@ $storageAccount = Get-AzureStorageAccount -StorageAccountName $storageAccountNam
 if($storageAccount -eq $null) 
 {
     Write-Host "- Storage account does not exist, yet - creating new one..."
-    New-AzureStorageAccount -StorageAccountName $storageAccountName `                            -Label $storageAccountName `                            -Location $regionName 
+    New-AzureStorageAccount -StorageAccountName $storageAccountName `
+                            -Label $storageAccountName `
+                            -Location $regionName 
     $storageAccount = Get-AzureStorageAccount -StorageAccountName $storageAccountName
     if($storageAccount -eq $null) 
     {
@@ -164,7 +172,9 @@ $azureBatchAccount = Get-AzureBatchAccount -AccountName $azureBatchAccountName -
 if($azureBatchAccount -eq $null) 
 {
     Write-Host "- Batch account " $azureBatchAccountName " does not exist, creating one..."
-    New-AzureBatchAccount -AccountName $azureBatchAccountName `                          -ResourceGroupName $batchSampleResourceGroupName `                          -Location $regionName
+    New-AzureBatchAccount -AccountName $azureBatchAccountName `
+                          -ResourceGroupName $batchSampleResourceGroupName `
+                          -Location $regionName
     $azureBatchAccount = Get-AzureBatchAccount -AccountName $azureBatchAccountName -ResourceGroupName $batchSampleResourceGroupName
     if($azureBatchAccount -eq $null) 
     {
@@ -189,6 +199,8 @@ $doc = New-Object System.Xml.XmlDocument
 
 Write-Host "- Updating .\BatchTesseractClient\app.config"
 $doc.Load($workingDir + "\BatchTesseractClient\app.config")
+$batchAccountRegionXmlAttr = $doc.SelectSingleNode("//add[@key='BatchRegion']/@value")
+$batchAccountRegionXmlAttr.Value = $regionName.ToLower().Replace(" ", "")
 $batchAccountNameXmlAttr = $doc.SelectSingleNode("//add[@key='BatchAccountName']/@value")
 $batchAccountNameXmlAttr.Value = $azureBatchAccountName
 $batchAccountKeyXmlAttr = $doc.SelectSingleNode("//add[@key='BatchAccountKey']/@value")
@@ -229,7 +241,9 @@ if($buildProc.ExitCode -ne 0)
 Write-Host ""
 Write-Host "(6) Switching back to service management and uploading sample data..." -for Yellow
 Switch-AzureMode -Name AzureServiceManagement
-$storageAccountContext = New-AzureStorageContext -StorageAccountName $storageAccountName `                                                 -StorageAccountKey $storagePrimaryKey `                                                 -Protocol https
+$storageAccountContext = New-AzureStorageContext -StorageAccountName $storageAccountName `
+                                                 -StorageAccountKey $storagePrimaryKey `
+                                                 -Protocol https
 $tesseractStorageContainer = Get-AzureStorageContainer -Name $storageContainerNameTesseract -Context $storageAccountContext -ErrorAction SilentlyContinue
 if($tesseractStorageContainer -eq $null) 
 {
@@ -242,7 +256,13 @@ if($tesseractStorageContainer -eq $null)
     }
 }
 Write-Host "- Uploading files from .\BatchTesseractWrapper\bin\Debug\*.*"
-UploadDirectory -baseName '' `                -directoryName ([String]::Concat($workingDir, "\BatchTesseractWrapper\bin\Debug")) `                -storageContext $storageAccountContext `                -containerName $storageContainerNameTesseractWrite-Host "- Uploading sample data from .\SupportFiles"$sampleDataContainer = Get-AzureStorageContainer -Name $storageContainerNameSampleData -Context $storageAccountContext -ErrorAction SilentlyContinue
+UploadDirectory -baseName '' `
+                -directoryName ([String]::Concat($workingDir, "\BatchTesseractWrapper\bin\Debug")) `
+                -storageContext $storageAccountContext `
+                -containerName $storageContainerNameTesseract
+
+Write-Host "- Uploading sample data from .\SupportFiles"
+$sampleDataContainer = Get-AzureStorageContainer -Name $storageContainerNameSampleData -Context $storageAccountContext -ErrorAction SilentlyContinue
 if($sampleDataContainer -eq $null) 
 {
     Write-Host "- Storage Container for sample data files does not exist, creating..."
@@ -252,4 +272,8 @@ if($sampleDataContainer -eq $null)
     {
         throw "Failed creating tesseract storage container '" + $storageContainerNameSampleData + "'"
     }
-}UploadDirectory -baseName '' `                -directoryName ([String]::Concat($workingDir, "\SupportFiles")) `                -storageContext $storageAccountContext `                -containerName $storageContainerNameSampleData
+}
+UploadDirectory -baseName '' `
+                -directoryName ([String]::Concat($workingDir, "\SupportFiles")) `
+                -storageContext $storageAccountContext `
+                -containerName $storageContainerNameSampleData
